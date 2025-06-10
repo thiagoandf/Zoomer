@@ -1,0 +1,75 @@
+{
+	"Name": "Zoomer",
+	"Version": "0.1.0.0",
+	"Author": "thiagoandf",
+	"Actions": [
+		{
+			"Name": "Zoom Mute Toggle",
+			"UUID": "com.thiagoandf.zoomer.mute-toggle",
+			"Icon": "imgs/actions/mute/icon",
+			"Tooltip": "Toggle Zoom microphone mute/unmute",
+			"PropertyInspectorPath": "ui/zoom-mute-toggle.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/mute/muted",
+					"TitleAlignment": "bottom",
+					"Name": "Muted"
+				},
+				{
+					"Image": "imgs/actions/mute/unmuted",
+					"TitleAlignment": "bottom",
+					"Name": "Unmuted"
+				}
+			]
+		},
+		{
+			"Name": "Zoom Video Toggle",
+			"UUID": "com.thiagoandf.zoomer.video-toggle",
+			"Icon": "imgs/actions/video/icon",
+			"Tooltip": "Toggle Zoom camera on/off",
+			"PropertyInspectorPath": "ui/zoom-video-toggle.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/video/off",
+					"TitleAlignment": "bottom",
+					"Name": "Video Off"
+				},
+				{
+					"Image": "imgs/actions/video/on",
+					"TitleAlignment": "bottom",
+					"Name": "Video On"
+				}
+			]
+		}
+	],
+	"Category": "Zoomer",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Applescript Zoom Control for StreamDeck",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 2,
+	"Software": {
+		"MinimumVersion": "6.5"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		},
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"UUID": "com.thiagoandf.zoomer"
+}

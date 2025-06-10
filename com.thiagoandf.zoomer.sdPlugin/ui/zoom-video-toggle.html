@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Zoom Video Toggle Settings</title>
+    <script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+</head>
+<body>
+    <sdpi-item label="Control Method">
+        <sdpi-select setting="controlMethod" placeholder="Please choose a control method">
+            <option value="keyboard">Keyboard Shortcut</option>
+            <option value="menubar">Menu Bar Action</option>
+        </sdpi-select>
+    </sdpi-item>
+
+    <sdpi-item label="Keyboard Shortcut">
+        <sdpi-textfield
+            setting="keyboardShortcut"
+            placeholder="cmd+shift+v"
+            value="cmd+shift+v">
+        </sdpi-textfield>
+        <details>
+            <summary>Shortcut Format</summary>
+            <p>Use format: <code>modifier+modifier+key</code></p>
+            <p><strong>Modifiers:</strong> cmd, shift, option (or alt), ctrl</p>
+            <p><strong>Examples:</strong></p>
+            <ul>
+                <li><code>cmd+shift+v</code> (Zoom default)</li>
+                <li><code>cmd+shift+option+v</code> (with option)</li>
+                <li><code>cmd+v</code> (simplified)</li>
+                <li><code>f2</code> (function key only)</li>
+            </ul>
+        </details>
+    </sdpi-item>
+</body>
+</html>
