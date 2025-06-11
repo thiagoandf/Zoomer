@@ -7,11 +7,12 @@ A reliable Stream Deck plugin that provides seamless Zoom control using advanced
 - **🎙️ Mute/Unmute Toggle**: Control your microphone with instant visual feedback
 - **📹 Video On/Off Toggle**: Control your camera with instant visual feedback
 - **🎯 Reliable State Detection**: Uses button description detection for accurate state reading
-- **⚡ Optimistic UI Updates**: Buttons respond immediately for better user experience
+- **⚡ Non-blocking Operations**: Async AppleScript execution keeps UI responsive
 - **🔄 Real-time Monitoring**: Automatically syncs with external Zoom changes
 - **⌨️ Customizable Shortcuts**: Set your own keyboard shortcuts for both actions
 - **🎛️ Dual Control Methods**: Choose between keyboard shortcuts or menu bar actions
-- **🚫 Non-intrusive**: No disruptive menu popups or UI interference
+- **🔧 Retry Logic**: Automatic retry with exponential backoff for reliability
+- **🛡️ Race Condition Protection**: Prevents conflicting state updates
 - **✅ Smart Detection**: Only monitors when Zoom is active and you're in a meeting
 
 ## Installation
@@ -49,7 +50,7 @@ Each action supports two control methods:
    - Fast and reliable
    - Customizable shortcuts
    - Works with Zoom's global shortcuts
-   - Default: `cmd+shift+option+a` (mute), `cmd+shift+v` (video)
+   - Default: `cmd+shift+a` (mute), `cmd+shift+v` (video)
 
 2. **Menu Bar Action**
    - Clicks Zoom's menu bar items
@@ -58,7 +59,7 @@ Each action supports two control methods:
 
 ### Customizable Keyboard Shortcuts
 
-You can now set custom keyboard shortcuts for each action:
+You can set custom keyboard shortcuts for each action:
 
 #### Shortcut Format
 Use the format: `modifier+modifier+key`
@@ -71,11 +72,12 @@ Use the format: `modifier+modifier+key`
 
 #### Examples
 ```
-cmd+shift+option+a    (Zoom's default mute)
-cmd+shift+a           (simplified)
-cmd+shift+m           (different key)
-ctrl+shift+m          (Control-based)
-f1                    (function key only)
+cmd+shift+a               (default mute)
+cmd+shift+option+a        (Zoom's default mute)
+cmd+shift+v               (default video)
+cmd+shift+m               (custom mute key)
+ctrl+shift+m              (Control-based)
+f1                        (function key only)
 ```
 
 ### How to Configure
@@ -105,7 +107,7 @@ f1                    (function key only)
 ## How It Works
 
 ### Reliable Detection Method
-The plugin uses a robust detection system that checks Zoom's UI button descriptions:
+The plugin uses a robust asynchronous detection system that checks Zoom's UI button descriptions:
 
 **Audio State Detection:**
 - **Muted**: Looks for buttons with "Unmute my audio" description
@@ -116,18 +118,19 @@ The plugin uses a robust detection system that checks Zoom's UI button descripti
 - **Video On**: Looks for buttons with "Stop video" description
 
 ### Smart Behavior
-- **Optimistic Updates**: Buttons update immediately when pressed for responsive UX
-- **Background Verification**: Actual state is verified after 800ms delay
-- **Periodic Monitoring**: Checks state every 5 seconds when Zoom is active
-- **Non-intrusive**: Only monitors when Zoom is the frontmost application
-- **Intelligent Detection**: Works with any Zoom window containing "Zoom" in the title
+- **Non-blocking Operations**: All AppleScript execution is asynchronous
+- **Retry Logic**: Up to 3 attempts with exponential backoff for reliability
+- **Race Condition Protection**: Prevents conflicting state updates
+- **Periodic Monitoring**: Checks state every 500ms when Zoom is active
+- **Input Validation**: Validates keyboard shortcuts before execution
+- **Smart Detection**: Works with any Zoom window containing "Zoom" in the title
 
 ### Control Execution
 1. **Process Check**: Verifies Zoom is running (`zoom.us` process)
 2. **Meeting Check**: Confirms you're in an active meeting
-3. **Execute Action**: Uses your chosen control method
+3. **Execute Action**: Uses your chosen control method with retry logic
 4. **Update Display**: Immediately updates button for responsive feel
-5. **Verify State**: Confirms actual state after brief delay
+5. **Verify State**: Confirms actual state after configurable delay (500ms)
 
 ## State Display
 
@@ -136,18 +139,40 @@ The plugin uses a robust detection system that checks Zoom's UI button descripti
 | Normal state icons | In meeting, state detected successfully |
 | "Zoom Not Running" | Zoom application is not running |
 | "Not in Meeting" | Zoom is running but not in an active meeting |
-| "Error" | Action failed to execute |
+| "Error" | Action failed to execute after retries |
 
-## Reliability Improvements
+## Architecture
+
+### Improved Code Structure
+The plugin uses a modern, maintainable architecture:
+
+```
+src/actions/
+├── zoom-toggle-base.ts          # Shared functionality base class
+├── zoom-mute-toggle.ts          # Audio control implementation
+├── zoom-video-toggle.ts         # Video control implementation
+└── zoom-monitor.ts              # State detection utilities
+```
+
+### Key Improvements
+- **🏗️ Base Class Architecture**: Eliminates code duplication
+- **⚡ Async Operations**: Non-blocking AppleScript execution
+- **🔄 Retry Logic**: Automatic retry with exponential backoff
+- **🛡️ Error Handling**: Comprehensive error logging and recovery
+- **⚙️ Configuration**: Centralized, configurable timing values
+- **🧪 Type Safety**: Proper TypeScript interfaces and validation
+
+## Reliability Features
 
 This plugin implements several reliability enhancements:
 
 - **🎯 Button Description Detection**: More reliable than menu bar checking
 - **🔄 Multiple Fallback Methods**: Graceful degradation when detection fails
-- **⚡ Optimistic UI**: Immediate feedback prevents user confusion
+- **⚡ Non-blocking UI**: Async operations keep Stream Deck responsive
 - **📊 Periodic Sync**: Catches external changes (using Zoom's native controls)
 - **🚫 Non-disruptive**: No menu popups or UI interference
-- **🎛️ Smart Timing**: Only monitors when necessary
+- **🔧 Auto-retry**: Handles intermittent AppleScript failures
+- **🛡️ Race Protection**: Prevents concurrent state updates
 
 ## Troubleshooting
 
@@ -176,6 +201,7 @@ This plugin implements several reliability enhancements:
 - Check Accessibility permissions
 - Verify Zoom window contains "Zoom" in title
 - Try different keyboard shortcut combinations
+- Check console for error messages (plugin will retry automatically)
 
 ### Advanced Troubleshooting
 
@@ -184,6 +210,7 @@ If issues persist:
 2. Verify Zoom's UI language is set to English
 3. Try restarting both Zoom and Stream Deck
 4. Test with Zoom's default keyboard shortcuts first
+5. The plugin will automatically retry failed operations up to 3 times
 
 ## Development
 
@@ -193,7 +220,7 @@ npm run build
 ```
 
 ### Testing
-A test script is available to verify detection methods:
+Test the detection methods while in a Zoom meeting:
 ```bash
 # Join a Zoom meeting first
 npx ts-node src/test-zoom-detection.ts
@@ -204,13 +231,27 @@ npx ts-node src/test-zoom-detection.ts
 src/
 ├── plugin.ts                     # Main plugin entry point
 ├── actions/
-│   ├── zoom-mute-toggle.ts      # Mute control with advanced detection
-│   ├── zoom-video-toggle.ts     # Video control with advanced detection
-│   └── zoom-audio-monitor.ts    # Shared detection utilities
+│   ├── zoom-toggle-base.ts       # Shared base class with common functionality
+│   ├── zoom-mute-toggle.ts       # Mute control implementation
+│   ├── zoom-video-toggle.ts      # Video control implementation
+│   └── zoom-monitor.ts           # State detection utilities
 com.thiagoandf.zoomer.sdPlugin/
-├── manifest.json                # Plugin metadata
-├── ui/                         # Property inspector HTML
-└── imgs/                       # Button icons and assets
+├── manifest.json                 # Plugin metadata
+├── ui/                          # Property inspector HTML
+└── imgs/                        # Button icons and assets
+```
+
+### Configuration Options
+The plugin uses centralized configuration in the base class:
+
+```typescript
+protected readonly config: ZoomToggleConfig = {
+  stateCheckInterval: 500,    // How often to check state (ms)
+  stateUpdateDelay: 500,      // Delay before updating after toggle (ms)
+  activationDelay: 100,       // Delay for Zoom activation (ms)
+  maxRetryAttempts: 3,        // Number of retry attempts
+  retryDelay: 200,            // Base retry delay (ms)
+};
 ```
 
 ## License
