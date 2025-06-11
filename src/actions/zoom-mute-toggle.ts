@@ -11,7 +11,7 @@ export class ZoomMuteToggle extends ZoomToggleBase<ZoomMuteSettings> {
 	 * Get the default keyboard shortcut for mute toggle
 	 */
 	protected getDefaultShortcut(): string {
-		return "cmd+shift+option+a";
+		return "cmd+shift+a";
 	}
 
 	/**
