@@ -1,13 +1,12 @@
 import { action, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
 import { execSync } from "child_process";
-import { ZoomAudioMonitor } from "./zoom-audio-monitor";
+import { ZoomMonitor } from "./zoom-monitor";
 
 /**
  * Action to toggle Zoom video on/off using AppleScript with improved reliability
  */
 @action({ UUID: "com.thiagoandf.zoomer.video-toggle" })
 export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
-	private lastKnownState: 'video_on' | 'video_off' | 'unknown' = 'unknown';
 	private stateCheckInterval?: NodeJS.Timeout;
 
 	/**
@@ -77,16 +76,9 @@ export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
 
 			execSync(`osascript -e '${appleScript}'`);
 
-			// Optimistically update state immediately for better UX
-			const newState = this.lastKnownState === 'video_on' ? 'video_off' : 'video_on';
-			await this.setButtonState(ev.action, newState);
-			this.lastKnownState = newState;
-
-			// Verify actual state after a reasonable delay
 			setTimeout(async () => {
 				await this.updateState(ev.action);
-			}, 800);
-
+			}, 500);
 		} catch (error) {
 			console.error("Failed to toggle Zoom video:", error);
 			await ev.action.setTitle("Error");
@@ -161,29 +153,11 @@ export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
 	}
 
 	/**
-	 * Check if Zoom is the frontmost (active) application
-	 */
-	private isZoomFrontmost(): boolean {
-		try {
-			const script = `
-				tell application "System Events"
-					set frontApp to name of first application process whose frontmost is true
-					return frontApp is "zoom.us"
-				end tell
-			`;
-			const result = execSync(`osascript -e '${script}'`).toString().trim();
-			return result === "true";
-		} catch {
-			return false;
-		}
-	}
-
-	/**
 	 * Detect video state using the reliable detection method
 	 */
 	private async detectVideoState(): Promise<'video_on' | 'video_off' | 'unknown'> {
-		const audioMonitor = ZoomAudioMonitor.getInstance();
-		return await audioMonitor.detectZoomVideoState();
+		const zoomMonitor = ZoomMonitor.getInstance();
+		return await zoomMonitor.detectZoomVideoState();
 	}
 
 	/**
@@ -195,14 +169,12 @@ export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
 
 			if (!isZoomRunning) {
 				await action.setTitle("Zoom\nNot Running");
-				this.lastKnownState = 'unknown';
 				return;
 			}
 
 			const isInMeeting = this.isInMeeting();
 			if (!isInMeeting) {
 				await action.setTitle("Not in\nMeeting");
-				this.lastKnownState = 'unknown';
 				return;
 			}
 
@@ -212,10 +184,6 @@ export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
 
 			if (detectedState !== 'unknown') {
 				await this.setButtonState(action, detectedState);
-				this.lastKnownState = detectedState;
-			} else {
-				// Keep last known state if we can't detect current state
-				await action.setTitle("Zoom\nMeeting");
 			}
 
 		} catch (error) {
@@ -229,9 +197,9 @@ export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
 	 */
 	private async setButtonState(action: any, state: 'video_on' | 'video_off'): Promise<void> {
 		if (state === 'video_off') {
-			await action.setState(0); // Video off state (typically red/off)
+			await action.setState(0); // Video off state
 		} else {
-			await action.setState(1); // Video on state (typically green/on)
+			await action.setState(1); // Video on state
 		}
 	}
 
@@ -239,13 +207,13 @@ export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
 	 * Periodically check state to catch external changes
 	 */
 	private startPeriodicStateCheck(action: any): void {
-		// Check every 5 seconds for state changes (reduced frequency to be less intrusive)
+		// Check every 500 milliseconds for state changes
 		this.stateCheckInterval = setInterval(async () => {
 			// Only check if Zoom is running, in a meeting, and is the frontmost application
-			if (this.isZoomRunning() && this.isInMeeting() && this.isZoomFrontmost()) {
+			if (this.isZoomRunning() && this.isInMeeting()) {
 				await this.updateState(action);
 			}
-		}, 5000);
+		}, 500);
 	}
 }
 

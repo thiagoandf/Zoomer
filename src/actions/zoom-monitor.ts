@@ -4,14 +4,14 @@ import { execSync } from "child_process";
  * Utility class for monitoring Zoom audio and video state
  * Uses simple, reliable detection methods
  */
-export class ZoomAudioMonitor {
-	private static instance: ZoomAudioMonitor;
+export class ZoomMonitor {
+	private static instance: ZoomMonitor;
 
-	static getInstance(): ZoomAudioMonitor {
-		if (!ZoomAudioMonitor.instance) {
-			ZoomAudioMonitor.instance = new ZoomAudioMonitor();
+	static getInstance(): ZoomMonitor {
+		if (!ZoomMonitor.instance) {
+			ZoomMonitor.instance = new ZoomMonitor();
 		}
-		return ZoomAudioMonitor.instance;
+		return ZoomMonitor.instance;
 	}
 
 	/**

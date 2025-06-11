@@ -1,13 +1,12 @@
 import { action, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
 import { execSync } from "child_process";
-import { ZoomAudioMonitor } from "./zoom-audio-monitor";
+import { ZoomMonitor } from "./zoom-monitor";
 
 /**
  * Action to toggle Zoom mute/unmute using AppleScript with improved reliability
  */
 @action({ UUID: "com.thiagoandf.zoomer.mute-toggle" })
 export class ZoomMuteToggle extends SingletonAction<ZoomMuteSettings> {
-	private lastKnownState: 'muted' | 'unmuted' | 'unknown' = 'unknown';
 	private stateCheckInterval?: NodeJS.Timeout;
 
 	/**
@@ -77,15 +76,11 @@ export class ZoomMuteToggle extends SingletonAction<ZoomMuteSettings> {
 
 			execSync(`osascript -e '${appleScript}'`);
 
-			// Optimistically update state immediately for better UX
-			const newState = this.lastKnownState === 'muted' ? 'unmuted' : 'muted';
-			await this.setButtonState(ev.action, newState);
-			this.lastKnownState = newState;
 
 			// Verify actual state after a reasonable delay
 			setTimeout(async () => {
 				await this.updateState(ev.action);
-			}, 800);
+			}, 500);
 
 		} catch (error) {
 			console.error("Failed to toggle Zoom mute:", error);
@@ -164,8 +159,8 @@ export class ZoomMuteToggle extends SingletonAction<ZoomMuteSettings> {
 	 * Detect mute state using the reliable detection method
 	 */
 	private async detectMuteState(): Promise<'muted' | 'unmuted' | 'unknown'> {
-		const audioMonitor = ZoomAudioMonitor.getInstance();
-		return await audioMonitor.detectZoomMuteState();
+		const zoomMonitor = ZoomMonitor.getInstance();
+		return await zoomMonitor.detectZoomMuteState();
 	}
 
 	/**
@@ -177,14 +172,12 @@ export class ZoomMuteToggle extends SingletonAction<ZoomMuteSettings> {
 
 			if (!isZoomRunning) {
 				await action.setTitle("Zoom\nNot Running");
-				this.lastKnownState = 'unknown';
 				return;
 			}
 
 			const isInMeeting = this.isInMeeting();
 			if (!isInMeeting) {
 				await action.setTitle("Not in\nMeeting");
-				this.lastKnownState = 'unknown';
 				return;
 			}
 
@@ -192,10 +185,6 @@ export class ZoomMuteToggle extends SingletonAction<ZoomMuteSettings> {
 
 			if (detectedState !== 'unknown') {
 				await this.setButtonState(action, detectedState);
-				this.lastKnownState = detectedState;
-			} else {
-				// Keep last known state if we can't detect current state
-				await action.setTitle("Zoom\nMeeting");
 			}
 
 		} catch (error) {
@@ -209,9 +198,9 @@ export class ZoomMuteToggle extends SingletonAction<ZoomMuteSettings> {
 	 */
 	private async setButtonState(action: any, state: 'muted' | 'unmuted'): Promise<void> {
 		if (state === 'muted') {
-			await action.setState(0); // Muted state (typically red/off)
+			await action.setState(0); // Muted state
 		} else {
-			await action.setState(1); // Unmuted state (typically green/on)
+			await action.setState(1); // Unmuted state
 		}
 	}
 
@@ -219,31 +208,13 @@ export class ZoomMuteToggle extends SingletonAction<ZoomMuteSettings> {
 	 * Periodically check state to catch external changes
 	 */
 	private startPeriodicStateCheck(action: any): void {
-		// Check every 5 seconds for state changes (reduced frequency to be less intrusive)
+		// Check every 500 milliseconds for state changes
 		this.stateCheckInterval = setInterval(async () => {
 			// Only check if Zoom is running, in a meeting, and is the frontmost application
-			if (this.isZoomRunning() && this.isInMeeting() && this.isZoomFrontmost()) {
+			if (this.isZoomRunning() && this.isInMeeting()) {
 				await this.updateState(action);
 			}
-		}, 5000);
-	}
-
-	/**
-	 * Check if Zoom is the frontmost (active) application
-	 */
-	private isZoomFrontmost(): boolean {
-		try {
-			const script = `
-				tell application "System Events"
-					set frontApp to name of first application process whose frontmost is true
-					return frontApp is "zoom.us"
-				end tell
-			`;
-			const result = execSync(`osascript -e '${script}'`).toString().trim();
-			return result === "true";
-		} catch {
-			return false;
-		}
+		}, 500);
 	}
 }
 
