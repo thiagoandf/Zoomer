@@ -15,13 +15,11 @@
 			"States": [
 				{
 					"Image": "imgs/actions/mute/muted",
-					"TitleAlignment": "bottom",
-					"Name": "Muted"
+					"TitleAlignment": "bottom"
 				},
 				{
 					"Image": "imgs/actions/mute/unmuted",
-					"TitleAlignment": "bottom",
-					"Name": "Unmuted"
+					"TitleAlignment": "bottom"
 				}
 			]
 		},
@@ -37,13 +35,11 @@
 			"States": [
 				{
 					"Image": "imgs/actions/video/off",
-					"TitleAlignment": "bottom",
-					"Name": "Video Off"
+					"TitleAlignment": "bottom"
 				},
 				{
 					"Image": "imgs/actions/video/on",
-					"TitleAlignment": "bottom",
-					"Name": "Video On"
+					"TitleAlignment": "bottom"
 				}
 			]
 		}
