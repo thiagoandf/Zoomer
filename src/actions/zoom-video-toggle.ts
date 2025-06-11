@@ -1,226 +1,70 @@
-import { action, KeyDownEvent, SingletonAction, WillAppearEvent } from "@elgato/streamdeck";
-import { execSync } from "child_process";
+import { action } from "@elgato/streamdeck";
+import { ZoomToggleBase, ZoomToggleSettings } from "./zoom-toggle-base";
 import { ZoomMonitor } from "./zoom-monitor";
 
 /**
  * Action to toggle Zoom video on/off using AppleScript with improved reliability
  */
 @action({ UUID: "com.thiagoandf.zoomer.video-toggle" })
-export class ZoomVideoToggle extends SingletonAction<ZoomVideoSettings> {
-	private stateCheckInterval?: NodeJS.Timeout;
-
+export class ZoomVideoToggle extends ZoomToggleBase<ZoomVideoSettings> {
 	/**
-	 * Set the initial state when the action appears
+	 * Get the default keyboard shortcut for video toggle
 	 */
-	override async onWillAppear(ev: WillAppearEvent<ZoomVideoSettings>): Promise<void> {
-		await this.updateState(ev.action);
-		this.startPeriodicStateCheck(ev.action);
+	protected getDefaultShortcut(): string {
+		return "cmd+shift+v";
 	}
 
 	/**
-	 * Clean up when action disappears
+	 * Get the menubar script for video toggle with fallback
 	 */
-	override async onWillDisappear(): Promise<void> {
-		if (this.stateCheckInterval) {
-			clearInterval(this.stateCheckInterval);
-		}
-	}
-
-	/**
-	 * Handle key press to toggle video state
-	 */
-	override async onKeyDown(ev: KeyDownEvent<ZoomVideoSettings>): Promise<void> {
-		try {
-			// Check if Zoom is running first
-			const isZoomRunning = this.isZoomRunning();
-			if (!isZoomRunning) {
-				await ev.action.setTitle("Zoom\nNot Running");
-				return;
-			}
-
-			const { settings } = ev.payload;
-			const controlMethod = settings.controlMethod || "keyboard";
-			const keyboardShortcut = settings.keyboardShortcut || "cmd+shift+v";
-
-			let appleScript: string;
-
-			if (controlMethod === "menubar") {
-				// Use menu bar approach
-				appleScript = `
-					tell application "System Events"
-						tell process "zoom.us"
-							try
-								click menu item "Stop Video" of menu 1 of menu bar item "Meeting" of menu bar 1
-							on error
-								try
-									click menu item "Start Video" of menu 1 of menu bar item "Meeting" of menu bar 1
-								on error
-									${this.generateKeystrokeScript(keyboardShortcut)}
-								end try
-							end try
-						end tell
-					end tell
-				`;
-			} else {
-				// Use keyboard shortcut approach (default)
-				appleScript = `
-					tell application "zoom.us"
-						activate
-					end tell
-					delay 0.1
-					tell application "System Events"
-						${this.generateKeystrokeScript(keyboardShortcut)}
-					end tell
-				`;
-			}
-
-			execSync(`osascript -e '${appleScript}'`);
-
-			setTimeout(async () => {
-				await this.updateState(ev.action);
-			}, 500);
-		} catch (error) {
-			console.error("Failed to toggle Zoom video:", error);
-			await ev.action.setTitle("Error");
-		}
-	}
-
-	/**
-	 * Generate AppleScript keystroke command from shortcut string
-	 * @param shortcut - String like "cmd+shift+v" or "cmd+shift+option+v"
-	 */
-	private generateKeystrokeScript(shortcut: string): string {
-		const parts = shortcut.toLowerCase().split('+');
-		const key = parts[parts.length - 1]; // Last part is the key
-		const modifiers = parts.slice(0, -1); // Everything else is modifiers
-
-		const modifierMap: { [key: string]: string } = {
-			'cmd': 'command down',
-			'command': 'command down',
-			'shift': 'shift down',
-			'opt': 'option down',
-			'option': 'option down',
-			'alt': 'option down',
-			'ctrl': 'control down',
-			'control': 'control down'
-		};
-
-		const appleScriptModifiers = modifiers
-			.map(mod => modifierMap[mod])
-			.filter(mod => mod) // Remove undefined modifiers
-			.join(', ');
-
-		if (appleScriptModifiers) {
-			return `keystroke "${key}" using {${appleScriptModifiers}}`;
-		} else {
-			return `keystroke "${key}"`;
-		}
-	}
-
-	/**
-	 * Check if Zoom is running
-	 */
-	private isZoomRunning(): boolean {
-		try {
-			const result = execSync(`pgrep -f "zoom.us"`).toString().trim();
-			return result.length > 0;
-		} catch {
-			return false;
-		}
-	}
-
-	/**
-	 * Check if currently in a Zoom meeting
-	 */
-	private isInMeeting(): boolean {
-		try {
-			const checkMeetingScript = `
-				tell application "System Events"
-					tell process "zoom.us"
+	protected getMenubarScript(fallbackScript: string): string {
+		return `
+			tell application "System Events"
+				tell process "zoom.us"
+					try
+						click menu item "Stop Video" of menu 1 of menu bar item "Meeting" of menu bar 1
+					on error
 						try
-							return exists menu bar item "Meeting" of menu bar 1
+							click menu item "Start Video" of menu 1 of menu bar item "Meeting" of menu bar 1
 						on error
-							return false
+							${fallbackScript}
 						end try
-					end tell
+					end try
 				end tell
-			`;
-			const result = execSync(`osascript -e '${checkMeetingScript}'`).toString().trim();
-			return result === "true";
-		} catch {
-			return false;
-		}
+			end tell
+		`;
 	}
 
 	/**
-	 * Detect video state using the reliable detection method
+	 * Detect video state using the ZoomMonitor
 	 */
-	private async detectVideoState(): Promise<'video_on' | 'video_off' | 'unknown'> {
+	protected async detectState(): Promise<string> {
 		const zoomMonitor = ZoomMonitor.getInstance();
 		return await zoomMonitor.detectZoomVideoState();
 	}
 
 	/**
-	 * Update the button state based on actual Zoom video status
+	 * Set the visual state of the button based on video state
 	 */
-	private async updateState(action: any): Promise<void> {
-		try {
-			const isZoomRunning = this.isZoomRunning();
-
-			if (!isZoomRunning) {
-				await action.setTitle("Zoom\nNot Running");
-				return;
-			}
-
-			const isInMeeting = this.isInMeeting();
-			if (!isInMeeting) {
-				await action.setTitle("Not in\nMeeting");
-				return;
-			}
-
-			const detectedState = await this.detectVideoState();
-
-			console.log("detectedState", detectedState);
-
-			if (detectedState !== 'unknown') {
-				await this.setButtonState(action, detectedState);
-			}
-
-		} catch (error) {
-			console.error("Failed to update Zoom video state:", error);
-			await action.setTitle("Error");
-		}
-	}
-
-	/**
-	 * Set the visual state of the button
-	 */
-	private async setButtonState(action: any, state: 'video_on' | 'video_off'): Promise<void> {
+	protected async setButtonState(action: any, state: string): Promise<void> {
 		if (state === 'video_off') {
 			await action.setState(0); // Video off state
-		} else {
+		} else if (state === 'video_on') {
 			await action.setState(1); // Video on state
 		}
 	}
 
 	/**
-	 * Periodically check state to catch external changes
+	 * Get the action type for logging purposes
 	 */
-	private startPeriodicStateCheck(action: any): void {
-		// Check every 500 milliseconds for state changes
-		this.stateCheckInterval = setInterval(async () => {
-			// Only check if Zoom is running, in a meeting, and is the frontmost application
-			if (this.isZoomRunning() && this.isInMeeting()) {
-				await this.updateState(action);
-			}
-		}, 500);
+	protected getActionType(): string {
+		return "video";
 	}
 }
 
 /**
  * Settings for {@link ZoomVideoToggle}.
  */
-type ZoomVideoSettings = {
-	controlMethod?: "keyboard" | "menubar";
-	keyboardShortcut?: string;
-};
+interface ZoomVideoSettings extends ZoomToggleSettings {
+	// Video toggle specific settings can be added here if needed
+}
