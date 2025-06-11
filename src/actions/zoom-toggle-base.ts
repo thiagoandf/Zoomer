@@ -28,8 +28,8 @@ export abstract class ZoomToggleBase<T extends ZoomToggleSettings> extends Singl
   protected isUpdating = false;
 
   protected readonly config: ZoomToggleConfig = {
-    stateCheckInterval: 500,
-    stateUpdateDelay: 500,
+    stateCheckInterval: 1000,
+    stateUpdateDelay: 1000,
     activationDelay: 100,
     maxRetryAttempts: 3,
     retryDelay: 200,
@@ -64,6 +64,8 @@ export abstract class ZoomToggleBase<T extends ZoomToggleSettings> extends Singl
    */
   override async onKeyDown(ev: KeyDownEvent<T>): Promise<void> {
     try {
+      this.cleanup(); // Clean up any existing interval
+
       const isZoomRunning = await this.isZoomRunning();
       if (!isZoomRunning) {
         await ev.action.setTitle("Zoom\nNot Running");
@@ -81,6 +83,8 @@ export abstract class ZoomToggleBase<T extends ZoomToggleSettings> extends Singl
       // Update state after a delay
       setTimeout(async () => {
         await this.updateState(ev.action);
+
+        this.startPeriodicStateCheck(ev.action); // Restart periodic state check
       }, this.config.stateUpdateDelay);
 
     } catch (error) {
