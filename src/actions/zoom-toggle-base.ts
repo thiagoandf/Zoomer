@@ -243,6 +243,8 @@ export abstract class ZoomToggleBase<T extends ZoomToggleSettings> extends Singl
         end tell
       `;
       const result = await this.executeAppleScript(checkMeetingScript);
+
+      console.log("isInMeeting", result);
       return result === "true";
     } catch {
       return false;
@@ -305,6 +307,7 @@ export abstract class ZoomToggleBase<T extends ZoomToggleSettings> extends Singl
 
       if (detectedState !== 'unknown') {
         await this.setButtonState(action, detectedState);
+        await action.setTitle("");
       }
 
     } catch (error) {
